@@ -287,39 +287,10 @@
   </header>
 
   <!-- Token -->
-  {% if token_configured %}
-  <div class="token-card" style="border-color:rgba(63,185,80,.3);background:rgba(63,185,80,.05);">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <span style="font-size:20px;">🔒</span>
-      <div>
-        <div style="font-family:var(--mono);font-size:12px;color:var(--accent2);letter-spacing:.08em;">
-          // TOKEN CONFIGURED ON SERVER
-        </div>
-        <div style="font-size:13px;color:var(--muted);margin-top:4px;">
-          Your GitHub token is securely set as an environment variable on Render. No need to paste it.
-        </div>
-      </div>
-    </div>
+  <!-- Token — JS checks live on every page load -->
+  <div id="tokenSection">
+    <!-- Filled by JS below -->
   </div>
-  {% else %}
-  <div class="token-card">
-    <label>// GITHUB PERSONAL ACCESS TOKEN</label>
-    <div class="token-row">
-      <input id="token" type="password" class="token-input"
-             placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-             autocomplete="off"/>
-      <button class="btn btn-ghost" onclick="toggleToken()">👁 Show</button>
-    </div>
-    <p style="font-size:12px;color:var(--muted);margin-top:10px;">
-      Need a token? →
-      <a href="https://github.com/settings/tokens/new?scopes=repo,user,read:user"
-         target="_blank" style="color:var(--accent);">
-        GitHub → Settings → Developer settings → Personal access tokens
-      </a>
-      &nbsp;(scopes: <code style="font-family:var(--mono);font-size:11px">repo, user</code>)
-    </p>
-  </div>
-  {% endif %}
 
   <!-- SECTION 1: AUDIT -->
   <div class="section" id="sec1">
@@ -452,6 +423,52 @@
     const el = document.getElementById('token');
     el.type = el.type === 'password' ? 'text' : 'password';
   }
+
+  // ── Live token status check on every page load ─────────────────────────────
+  const TOKEN_CONFIGURED_HTML = `
+    <div class="token-card" style="border-color:rgba(63,185,80,.3);background:rgba(63,185,80,.05);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;">🔒</span>
+        <div>
+          <div style="font-family:var(--mono);font-size:12px;color:var(--accent2);letter-spacing:.08em;">
+            // TOKEN CONFIGURED ON SERVER
+          </div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px;">
+            Your GitHub token is securely set as an environment variable on Render. No need to paste it.
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  const TOKEN_INPUT_HTML = `
+    <div class="token-card">
+      <label>// GITHUB PERSONAL ACCESS TOKEN</label>
+      <div class="token-row">
+        <input id="token" type="password" class="token-input"
+               placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off"/>
+        <button class="btn btn-ghost" onclick="toggleToken()">👁 Show</button>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:10px;">
+        Need a token? →
+        <a href="https://github.com/settings/tokens/new?scopes=repo,user,read:user"
+           target="_blank" style="color:var(--accent);">
+          GitHub → Settings → Developer settings → Personal access tokens
+        </a>
+        &nbsp;(scopes: <code style="font-family:var(--mono);font-size:11px">repo, user</code>)
+      </p>
+    </div>`;
+
+  // Runs on every page load — always gets fresh status from server
+  (async () => {
+    try {
+      const res  = await fetch('/api/token-status');
+      const data = await res.json();
+      document.getElementById('tokenSection').innerHTML =
+        data.configured ? TOKEN_CONFIGURED_HTML : TOKEN_INPUT_HTML;
+    } catch {
+      document.getElementById('tokenSection').innerHTML = TOKEN_INPUT_HTML;
+    }
+  })();
 
   function toggle(id) {
     const body  = document.getElementById('body' + id.replace('sec',''));
